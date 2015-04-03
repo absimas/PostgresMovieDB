@@ -1,5 +1,5 @@
 # PostgresMovieDB
-University assignment for DBMS.
+University assignment for DBMS
 
 # Libraries
 - JSON
