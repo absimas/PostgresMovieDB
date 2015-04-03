@@ -52,7 +52,7 @@ public abstract class BaseFrame extends JFrame {
     public abstract void addComponents();
 
     /**
-     * Basic {@code Frame} customization    
+     * Basic {@code Frame} customization
      */
     private void customizeFrame() {
         setDefaultCloseOperation(EXIT_ON_CLOSE);

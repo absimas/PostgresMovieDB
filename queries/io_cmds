@@ -1,4 +1,4 @@
--- '-h localhost' to avoid default (peer) authentication
+// Export (careful, overwrites...) // '-h localhost' to avoid default (peer) authentication
 pg_dump -U simas pmdb -f pmdb.sql -h localhost
-
+// Import
 psql -U simas -d pmdb -f pmdb.sql
