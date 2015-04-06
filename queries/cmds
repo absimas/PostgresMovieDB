@@ -1,0 +1,11 @@
+// Export (careful, overwrites...) // '-h localhost' to avoid default (peer) authentication
+pg_dump -U simas pmdb -f pmdb.sql -h localhost
+// Import
+psql -U simas -d pmdb -f pmdb.sql
+psql -h pgsql2.mif -d studentu
+
+// Add a constraint
+ALTER TABLE Movie ADD CONSTRAINT YearConstraint CHECK (Year < date_part('year', current_date) + 1);
+
+// Remove a func and its dependants
+DROP FUNCTION checkMinActor() cascade;
