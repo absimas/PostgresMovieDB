@@ -65,6 +65,84 @@ CREATE TYPE genre_type AS ENUM (
 
 ALTER TYPE genre_type OWNER TO postgres;
 
+--
+-- Name: checkgenrecount(); Type: FUNCTION; Schema: public; Owner: simas
+--
+
+CREATE FUNCTION checkgenrecount() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE count		INT;
+    BEGIN
+	-- Select actor count for this movie
+	SELECT GenreCount INTO count FROM MovieGenreCount
+		WHERE ID = NEW.MOVIE_ID;
+	-- Check if movie only has a single actor
+	IF count = 5 THEN
+		RAISE EXCEPTION 'Movie can''t have more than 5 genres';
+	END IF;
+	RETURN NEW;
+    END;
+$$;
+
+
+ALTER FUNCTION public.checkgenrecount() OWNER TO simas;
+
+--
+-- Name: checkminactor(); Type: FUNCTION; Schema: public; Owner: simas
+--
+
+CREATE FUNCTION checkminactor() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE mov_id		INT;
+	count		INT;
+	mov_name	TEXT;
+    BEGIN
+	-- Loop this actors' movies
+	FOR mov_id IN SELECT MOVIE_ID FROM Acting WHERE ACTOR_ID = OLD.ID
+	LOOP
+		-- Select actor count for this movie
+		SELECT ActorCount INTO count FROM MovieActorCount
+			WHERE ID = mov_id;
+		-- Check if movie only has a single actor
+		IF count = 1 THEN
+			SELECT Name INTO mov_name FROM Movie WHERE ID = mov_id;
+			RAISE EXCEPTION 'Cannot delete this actor as he''s the last one starring in ''%''!', mov_name;
+		END IF;
+	END LOOP;
+	RETURN OLD;
+    END;
+$$;
+
+
+ALTER FUNCTION public.checkminactor() OWNER TO simas;
+
+--
+-- Name: checkminrole(); Type: FUNCTION; Schema: public; Owner: simas
+--
+
+CREATE FUNCTION checkminrole() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE count		INT;
+	mov_name	TEXT;
+    BEGIN
+	-- Select actor count for this movie
+	SELECT ActorCount INTO count FROM MovieActorCount
+		WHERE ID = OLD.MOVIE_ID;
+	-- Check if this actor is last in the movie
+        IF count = 1 THEN
+		SELECT Name INTO mov_name FROM Movie WHERE ID = OLD.MOVIE_ID;
+		RAISE EXCEPTION 'Cannot delete the last role from movie ''%''!', mov_name;
+        END IF;
+	RETURN OLD;
+    END;
+$$;
+
+
+ALTER FUNCTION public.checkminrole() OWNER TO simas;
+
 SET default_tablespace = '';
 
 SET default_with_oids = false;
@@ -165,6 +243,57 @@ ALTER TABLE movie_id_seq OWNER TO postgres;
 
 ALTER SEQUENCE movie_id_seq OWNED BY movie.id;
 
+
+--
+-- Name: movieactorcount; Type: VIEW; Schema: public; Owner: simas
+--
+
+CREATE VIEW movieactorcount AS
+ SELECT movie.id,
+    movie.name,
+    movie.rating,
+    movie.votes,
+    movie.year,
+    ( SELECT count(*) AS count
+           FROM acting
+          WHERE (acting.movie_id = movie.id)) AS actorcount
+   FROM movie;
+
+
+ALTER TABLE movieactorcount OWNER TO simas;
+
+--
+-- Name: movieage; Type: VIEW; Schema: public; Owner: simas
+--
+
+CREATE VIEW movieage AS
+ SELECT movie.id,
+    movie.name,
+    movie.rating,
+    movie.votes,
+    date_part('year'::text, age(to_timestamp((movie.year || '-01-01'::text), 'YYYY-MM-DD'::text))) AS age
+   FROM movie;
+
+
+ALTER TABLE movieage OWNER TO simas;
+
+--
+-- Name: moviegenrecount; Type: VIEW; Schema: public; Owner: simas
+--
+
+CREATE VIEW moviegenrecount AS
+ SELECT movie.id,
+    movie.name,
+    movie.rating,
+    movie.votes,
+    movie.year,
+    ( SELECT count(*) AS count
+           FROM genre
+          WHERE (genre.movie_id = movie.id)) AS genrecount
+   FROM movie;
+
+
+ALTER TABLE moviegenrecount OWNER TO simas;
 
 --
 -- Name: id; Type: DEFAULT; Schema: public; Owner: postgres
@@ -29678,6 +29807,8 @@ COPY movie (id, name, rating, votes, year) FROM stdin;
 248	Le samouraï	8	25577	1967
 249	Akira	8	86646	1988
 250	Before Sunset	8	139601	2004
+251	Movie	1	1	2016
+252	My Movie	\N	\N	2015
 \.
 
 
@@ -29685,7 +29816,7 @@ COPY movie (id, name, rating, votes, year) FROM stdin;
 -- Name: movie_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('movie_id_seq', 250, true);
+SELECT pg_catalog.setval('movie_id_seq', 252, true);
 
 
 --
@@ -29735,10 +29866,52 @@ CREATE INDEX actor_lower_idx1 ON actor USING btree (lower(surname));
 
 
 --
+-- Name: actor_lower_idx2; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE INDEX actor_lower_idx2 ON actor USING btree (lower(name));
+
+
+--
+-- Name: actor_lower_idx3; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE INDEX actor_lower_idx3 ON actor USING btree (lower(surname));
+
+
+--
 -- Name: movie_lower_idx; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
 --
 
 CREATE INDEX movie_lower_idx ON movie USING btree (lower(name));
+
+
+--
+-- Name: movie_lower_idx1; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
+--
+
+CREATE UNIQUE INDEX movie_lower_idx1 ON movie USING btree (lower(name));
+
+
+--
+-- Name: maxgenre; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER maxgenre BEFORE INSERT ON genre FOR EACH ROW EXECUTE PROCEDURE checkgenrecount();
+
+
+--
+-- Name: minactor; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER minactor BEFORE DELETE OR UPDATE ON actor FOR EACH ROW EXECUTE PROCEDURE checkminactor();
+
+
+--
+-- Name: minrole; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER minrole BEFORE DELETE OR UPDATE ON acting FOR EACH ROW EXECUTE PROCEDURE checkminrole();
 
 
 --

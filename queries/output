@@ -1,0 +1,10 @@
+INSERT 0 1
+INSERT 0 1
+DELETE 0
+DELETE 1
+INSERT 0 1
+ id  |   name   | rating | votes | year 
+-----+----------+--------+-------+------
+ 252 | My Movie |        |       | 2015
+(1 row)
+

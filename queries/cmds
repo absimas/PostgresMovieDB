@@ -9,3 +9,6 @@ ALTER TABLE Movie ADD CONSTRAINT YearConstraint CHECK (Year < date_part('year', 
 
 // Remove a func and its dependants
 DROP FUNCTION checkMinActor() cascade;
+
+// Postgres hostname
+select inet_server_addr();

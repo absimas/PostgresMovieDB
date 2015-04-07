@@ -1,6 +1,5 @@
 package com.simas;
 
-import com.sun.glass.ui.Size;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -339,6 +338,14 @@ public class ThumbFetcher {
 			return new Size(newWidth, newHeight);
 		}
 
+	}
+
+	private static class Size {
+		int width, height;
+		public Size(int width, int height) {
+			this.width = width;
+			this.height = height;
+		}
 	}
 
 }
