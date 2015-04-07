@@ -340,8 +340,8 @@ public class ThumbFetcher {
 
 	}
 
-	private static class Size {
-		int width, height;
+	public static class Size {
+		public int width, height;
 		public Size(int width, int height) {
 			this.width = width;
 			this.height = height;
