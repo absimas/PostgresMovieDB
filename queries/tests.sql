@@ -2,10 +2,10 @@
 -- Movie that'll be released in the future (check constraint violation)
 INSERT INTO MOVIE (Name, Rating, Votes, Year) VALUES ('Movie', 1, 1, 2016);
 
--- Acting with an invalid MOVIE_ID (foreign key constraint violation) (check constraint violation)
+-- Acting with an invalid MOVIE_ID (FK + check constraint violation)
 INSERT INTO Actor VALUES (-1, 1);
 
--- Acting with an invalid ACTOR_ID (foreign key constraint violation) (check constraint violation)
+-- Acting with an invalid ACTOR_ID (FK + check constraint violation)
 INSERT INTO Actor VALUES (1, -1);
 
 -- TRIGGERS
