@@ -8,14 +8,19 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.border.Border;
 import javax.swing.event.DocumentEvent;
@@ -33,10 +38,14 @@ public class NewMovieDialog extends JDialog implements ActionListener, KeyListen
 	private static final String RATING = "Rating";
 	private static final String VOTES = "Votes";
 	private static final String OK = "OK";
+	private static final String ADD = "->";
+	private static final String REMOVE = "<-";
 	private static final String MOVIE_ADDED = "Movie successfully added!";
+	private static final String MOVIE_ADDITION_FAILED = "Failed to add a new movie!";
 	private final JButton mOKButton;
 
 	private JTextField mNameField, mYearField, mRatingField, mVotesField;
+	private JList<DB.Actor> mAddedActors;
 
 	public NewMovieDialog(MoviesFrames parent) {
 		super(parent, TITLE);
@@ -92,7 +101,60 @@ public class NewMovieDialog extends JDialog implements ActionListener, KeyListen
 		mVotesField.addKeyListener(this);
 		add(mVotesField, gbc);
 
-		// Delete button
+		// Actor list
+		++gbc.gridy;
+		gbc.gridx = 1;
+		// Parse all actors' "name surname"
+		List<DB.Actor> actors = BaseFrame.sDB.selectActors(0, 0);
+		// Create a list of all actors
+		final JList<DB.Actor> actorList = new JList<>(actors.toArray(new DB.Actor[actors.size()]));
+		actorList.setVisibleRowCount(4);
+		JScrollPane scrollPane = new JScrollPane(actorList);
+		add(scrollPane, gbc);
+
+		// Added actor list
+		gbc.gridx = 3;
+		mAddedActors = new JList<>();
+		mAddedActors.setVisibleRowCount(4);
+		scrollPane = new JScrollPane(mAddedActors);
+		add(scrollPane, gbc);
+
+		// Add/Remove button
+		gbc.gridx = 2;
+		JPanel buttonPanel = new JPanel();
+		buttonPanel.setLayout(new BoxLayout(buttonPanel, BoxLayout.Y_AXIS));
+		// Add
+		JButton button = new JButton(ADD);
+		button.addActionListener(e -> {
+			List<DB.Actor> actors1 = actorList.getSelectedValuesList();
+			int addedActorCount = mAddedActors.getModel().getSize();
+			for (int i = 0; i < addedActorCount; ++i) {
+				actors1.add(mAddedActors.getModel().getElementAt(i));
+			}
+			mAddedActors.setListData(actors1.toArray(new DB.Actor[actors1.size()]));
+		});
+		buttonPanel.add(button);
+		// Remove
+		button = new JButton(REMOVE);
+		button.addActionListener(e -> {
+			// Parse added actors
+			int addedActorCount = mAddedActors.getModel().getSize();
+			List<DB.Actor> clearActors = new ArrayList<>();
+			for (int i = 0; i < addedActorCount; ++i) {
+				clearActors.add(mAddedActors.getModel().getElementAt(i));
+			}
+			// Remove selected actors (skip duplicates)
+			List<DB.Actor> selectedActors = mAddedActors.getSelectedValuesList();
+			for (DB.Actor selectedActor : selectedActors) {
+				clearActors.remove(selectedActor);
+			}
+			// Update list
+			mAddedActors.setListData(clearActors.toArray(new DB.Actor[clearActors.size()]));
+		});
+		buttonPanel.add(button);
+		add(buttonPanel, gbc);
+
+		// OK button
 		++gbc.gridy;
 		gbc.gridx = 0;
 		mOKButton = new JButton(OK);
@@ -161,9 +223,24 @@ public class NewMovieDialog extends JDialog implements ActionListener, KeyListen
 			// Add video to DB
 			MoviesFrames moviesFrames = (MoviesFrames) getParent();
 			DB.Movie movie = new DB.Movie(name, year, rating, votes);
-			MoviesFrames.sDB.insertMovie(movie);
-			// Display success message and close dialog
-			JOptionPane.showMessageDialog(getParent(), MOVIE_ADDED);
+
+			// Parse actors into a list
+			int actorCount = mAddedActors.getModel().getSize();
+			List<DB.Actor> actors = new ArrayList<>();
+			for (int i=0; i<actorCount; ++i) {
+				actors.add(mAddedActors.getModel().getElementAt(i));
+			}
+
+			// Execute transaction
+			if (MoviesFrames.sDB.insertMovieWithActors(movie, actors)) {
+				// Display success message
+				JOptionPane.showMessageDialog(getParent(), MOVIE_ADDED, "",
+						JOptionPane.INFORMATION_MESSAGE);
+			} else {
+				// Display fail message
+				JOptionPane.showMessageDialog(getParent(), MOVIE_ADDITION_FAILED, "",
+						JOptionPane.ERROR_MESSAGE);
+			}
 			setVisible(false);
 		}
 	}

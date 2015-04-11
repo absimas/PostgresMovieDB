@@ -25,7 +25,7 @@ import javax.swing.WindowConstants;
 // Google ajax link -- &q=HTTPEncode.encode(keyword, "UTF-8")
     // https://ajax.googleapis.com/ajax/services/search/images?v=1.0&q=the%20godfather
 
-// ToDo:
+// Maybe:
     // Actions with actors, acting and genres
     // Movies | Actors --- tabs. Abstract MoviesFrames - to show either movies or actors of some movie
     // Fetch images on scroll

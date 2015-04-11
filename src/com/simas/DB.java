@@ -17,7 +17,7 @@ public class DB {
 	// Database TEXT INDEXES are LOWERCASE so convert any string to lower case before searching!
 
 	// Auth
-	private static final String DB_HOST = "localhost";
+		private static final String DB_HOST = "localhost";
 	private static final String DB_NAME = "pmdb";
 	private static final String DB_LOGIN = "simas";
 	private static final String DB_PASS = "123";
@@ -41,6 +41,7 @@ public class DB {
 	private Connection mConnection;
 	// Select queries
 	private PreparedStatement mSelectActorInterval;
+	private PreparedStatement mSelectActors;
 	private PreparedStatement mSelectMovieInterval;
 	private PreparedStatement mSelectGenresByMovieId;
 	private PreparedStatement mSelectActorIntervalByMovieId;
@@ -58,7 +59,8 @@ public class DB {
 	// Insert queries
 	private PreparedStatement mInsertMovie;
 	private PreparedStatement mInsertActor;
-	private PreparedStatement mInsertActingByMovieAndActorIds;
+	private PreparedStatement mInsertActing;
+	private PreparedStatement mInsertGenreByMovieAndGenre;
 	private PreparedStatement mInsertGenre;
 	// Search queries
 	private PreparedStatement mSelectMovieByName;
@@ -85,12 +87,14 @@ public class DB {
 					.format("SELECT * FROM %s LIMIT ? OFFSET ?", TABLE_ACTOR));
 			mSelectMovieInterval = mConnection.prepareStatement(String
 					.format("SELECT * FROM %s LIMIT ? OFFSET ?", TABLE_MOVIE));
+			mSelectActors = mConnection.prepareStatement(String
+					.format("SELECT * FROM %s", TABLE_ACTOR));
 			// SELECT * FROM Actor WHERE ID = IN (
 			//     SELECT ACTOR_ID FROM Acting WHERE MOVIE_ID=?
 			// ) LIMIT ? OFFSET ?
 			mSelectActorIntervalByMovieId = mConnection.prepareStatement(String
 					.format("SELECT * FROM %s WHERE %s IN (" +
-										"SELECT %s FROM %s WHERE %s=?" +
+									"SELECT %s FROM %s WHERE %s=?" +
 									") LIMIT ? OFFSET ?",
 							TABLE_ACTOR, COL_ID, COL_ACTOR_ID, TABLE_ACTING, COL_MOVIE_ID));
 			// SELECT * FROM Movie WHERE ID = IN (
@@ -130,10 +134,10 @@ public class DB {
 			mInsertActor = mConnection.prepareStatement(String
 					.format("INSERT INTO %s (%s, %s) VALUES (?, ?)",
 							TABLE_ACTOR, COL_ACTOR_NAME, COL_ACTOR_SURNAME));
-			mInsertActingByMovieAndActorIds = mConnection.prepareStatement(String
+			mInsertActing = mConnection.prepareStatement(String
 					.format("INSERT INTO %s (%s, %s) VALUES (?, ?)",
 							TABLE_ACTING, COL_MOVIE_ID, COL_ACTOR_ID));
-			mInsertActingByMovieAndActorIds = mConnection.prepareStatement(String
+			mInsertGenreByMovieAndGenre = mConnection.prepareStatement(String
 					.format("INSERT INTO %s (%s, %s) VALUES (?, ?)",
 							TABLE_GENRE, COL_MOVIE_ID, COL_GENRE));
 			/**************************************************************************************/
@@ -156,10 +160,14 @@ public class DB {
 	public List<Actor> selectActors(int limit, int from) {
 		List<Actor> actors = new ArrayList<>();
 		try {
-			mSelectActorInterval.setInt(1, limit);
-			mSelectActorInterval.setInt(2, from);
-			mSelectActorInterval.execute();
-			ResultSet results = mSelectActorInterval.getResultSet();
+			ResultSet results;
+			if (limit != 0) {
+				mSelectActorInterval.setInt(1, limit);
+				mSelectActorInterval.setInt(2, from);
+				results = mSelectActorInterval.executeQuery();
+			} else {
+				results = mSelectActors.executeQuery();
+			}
 			int idCol = results.findColumn(COL_ID);
 			int nameCol = results.findColumn(COL_ACTOR_NAME);
 			int surnameCol = results.findColumn(COL_ACTOR_SURNAME);
@@ -182,8 +190,7 @@ public class DB {
 			mSelectActorIntervalByMovieId.setInt(1, movie.id);
 			mSelectActorIntervalByMovieId.setInt(2, limit);
 			mSelectActorIntervalByMovieId.setInt(3, from);
-			mSelectActorIntervalByMovieId.execute();
-			ResultSet results = mSelectActorIntervalByMovieId.getResultSet();
+			ResultSet results = mSelectActorIntervalByMovieId.executeQuery();
 			int idCol = results.findColumn(COL_ID);
 			int nameCol = results.findColumn(COL_ACTOR_NAME);
 			int surnameCol = results.findColumn(COL_ACTOR_SURNAME);
@@ -204,8 +211,7 @@ public class DB {
 		try {
 			mSelectMovieInterval.setInt(1, limit);
 			mSelectMovieInterval.setInt(2, from);
-			mSelectMovieInterval.execute();
-			ResultSet results = mSelectMovieInterval.getResultSet();
+			ResultSet results = mSelectMovieInterval.executeQuery();
 			int idCol = results.findColumn(COL_ID);
 			int nameCol = results.findColumn(COL_NAME);
 			int yearCol = results.findColumn(COL_YEAR);
@@ -230,8 +236,7 @@ public class DB {
 		Movie movie = null;
 		try {
 			mSelectMovieById.setInt(1, id);
-			mSelectMovieById.execute();
-			ResultSet results = mSelectMovieById.getResultSet();
+			ResultSet results = mSelectMovieById.executeQuery();
 			int nameCol = results.findColumn(COL_NAME);
 			int yearCol = results.findColumn(COL_YEAR);
 			int ratingCol = results.findColumn(COL_RATING);
@@ -254,8 +259,7 @@ public class DB {
 		Actor actor = null;
 		try {
 			mSelectActorById.setInt(1, id);
-			mSelectActorById.execute();
-			ResultSet results = mSelectActorById.getResultSet();
+			ResultSet results = mSelectActorById.executeQuery();
 			int nameCol = results.findColumn(COL_ACTOR_NAME);
 			int surnameCol = results.findColumn(COL_ACTOR_SURNAME);
 			if (results.next()) {
@@ -271,8 +275,7 @@ public class DB {
 		List<String> genres = new ArrayList<>();
 		try {
 			mSelectGenresByMovieId.setInt(1, movieId);
-			mSelectGenresByMovieId.execute();
-			ResultSet results = mSelectGenresByMovieId.getResultSet();
+			ResultSet results = mSelectGenresByMovieId.executeQuery();
 			int genreCol = results.findColumn(COL_GENRE);
 			while (results.next()) {
 				genres.add(results.getString(genreCol));
@@ -344,6 +347,43 @@ public class DB {
 		}
 	}
 
+	public boolean insertMovieWithActors(Movie movie, List<Actor> actors) {
+		try {
+			// Disable auto commit
+			mConnection.setAutoCommit(false);
+			// Insert movie
+			insertMovie(movie);
+
+			if (actors.size() > 0) {
+				// Get the inserted movie's id
+				mSelectMovieByName.setString(1, movie.name);
+				ResultSet result = mSelectMovieByName.executeQuery();
+				if (result.next()) {
+					int idCol = result.findColumn(COL_ID);
+					movie.id = result.getInt(idCol);
+
+					// Add actors of this movie
+					for (Actor actor : actors) {
+						insertActing(movie, actor);
+					}
+				} else {
+					throw new SQLException("Finding the new movie id failed!");
+				}
+			}
+			// Commit transaction
+			mConnection.commit();
+			return true;
+		} catch (SQLException e) {
+			e.printStackTrace();
+			try {
+				mConnection.rollback();
+			} catch (SQLException e1) {
+				e1.printStackTrace();
+			}
+		}
+		return false;
+	}
+
 	public void insertActor(Actor actor) {
 		try {
 			// Insert actor
@@ -355,15 +395,11 @@ public class DB {
 		}
 	}
 
-	public void insertActing(Movie movie, Actor actor) {
-		try {
-			// Insert acting
-			mInsertMovie.setInt(1, movie.id);
-			mInsertMovie.setInt(2, actor.id);
-			mInsertMovie.execute();
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
+	public void insertActing(Movie movie, Actor actor) throws SQLException {
+		// Insert acting
+		mInsertActing.setInt(1, movie.id);
+		mInsertActing.setInt(2, actor.id);
+		mInsertActing.execute();
 	}
 
 //	public void insertGenre(Movie movie, Genre genre) {
@@ -383,8 +419,7 @@ public class DB {
 			// %query%, - % stands for any character sequence
 			query = "%" + query.toLowerCase() + "%";
 			mSelectMovieByName.setString(1, query);
-			mSelectMovieByName.execute();
-			ResultSet results = mSelectMovieByName.getResultSet();
+			ResultSet results = mSelectMovieByName.executeQuery();
 			int idCol = results.findColumn(COL_ID);
 			int nameCol = results.findColumn(COL_NAME);
 			int yearCol = results.findColumn(COL_YEAR);
@@ -410,8 +445,7 @@ public class DB {
 			// %query%, - % stands for any character sequence
 			query = "%" + query.toLowerCase() + "%";
 			mSelectActorByNameOrSurname.setString(1, query);
-			mSelectActorByNameOrSurname.execute();
-			ResultSet results = mSelectActorByNameOrSurname.getResultSet();
+			ResultSet results = mSelectActorByNameOrSurname.executeQuery();
 			int idCol = results.findColumn(COL_ID);
 			int nameCol = results.findColumn(COL_ACTOR_NAME);
 			int surnameCol = results.findColumn(COL_ACTOR_SURNAME);
@@ -434,8 +468,7 @@ public class DB {
 			query = "%" + query.toLowerCase() + "%";
 			mSelectActorByNameOrSurnameAndMovieId.setString(1, query);
 			mSelectActorByNameOrSurnameAndMovieId.setInt(2, movie.id);
-			mSelectActorByNameOrSurnameAndMovieId.execute();
-			ResultSet results = mSelectActorByNameOrSurnameAndMovieId.getResultSet();
+			ResultSet results = mSelectActorByNameOrSurnameAndMovieId.executeQuery();
 			int idCol = results.findColumn(COL_ID);
 			int nameCol = results.findColumn(COL_ACTOR_NAME);
 			int surnameCol = results.findColumn(COL_ACTOR_SURNAME);
@@ -507,6 +540,11 @@ public class DB {
 			this.id = id;
 			this.name = name;
 			this.surname = surname;
+		}
+
+		@Override
+		public String toString() {
+			return name + " " + surname;
 		}
 	}
 
