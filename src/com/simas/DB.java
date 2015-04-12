@@ -17,7 +17,11 @@ public class DB {
 	// Database TEXT INDEXES are LOWERCASE so convert any string to lower case before searching!
 
 	// Auth
-		private static final String DB_HOST = "localhost";
+//	private static final String DB_HOST = "192.168.42.51";
+//	private static final String DB_NAME = "studentu";
+//	private static final String DB_LOGIN = "siab1555";
+//	private static final String DB_PASS = "siab1555";
+	private static final String DB_HOST = "localhost";
 	private static final String DB_NAME = "pmdb";
 	private static final String DB_LOGIN = "simas";
 	private static final String DB_PASS = "123";
@@ -183,6 +187,7 @@ public class DB {
 		return actors;
 	}
 
+	// ToDo transaction add actor and add to movie
 	public List<Actor> selectActorsInMovie(Movie movie, int limit, int from) {
 		List<Actor> actors = new ArrayList<>();
 		try {
@@ -356,7 +361,7 @@ public class DB {
 
 			if (actors.size() > 0) {
 				// Get the inserted movie's id
-				mSelectMovieByName.setString(1, movie.name);
+				mSelectMovieByName.setString(1, movie.name.toLowerCase());
 				ResultSet result = mSelectMovieByName.executeQuery();
 				if (result.next()) {
 					int idCol = result.findColumn(COL_ID);
